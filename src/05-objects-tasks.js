@@ -6,7 +6,6 @@
  *                                                                                                *
  ************************************************************************************************ */
 
-
 /**
  * Returns the rectangle object with width and height parameters and getArea() method
  *
@@ -20,10 +19,16 @@
  *    console.log(r.height);      // => 20
  *    console.log(r.getArea());   // => 200
  */
-function Rectangle(/* width, height */) {
-  throw new Error('Not implemented');
+function Rectangle(width, height) {
+  function getArea() {
+    return this.height * this.width;
+  }
+  return {
+    width,
+    height,
+    getArea,
+  };
 }
-
 
 /**
  * Returns the JSON representation of specified object
@@ -35,10 +40,9 @@ function Rectangle(/* width, height */) {
  *    [1,2,3]   =>  '[1,2,3]'
  *    { width: 10, height : 20 } => '{"height":10,"width":20}'
  */
-function getJSON(/* obj */) {
-  throw new Error('Not implemented');
+function getJSON(obj) {
+  return JSON.stringify(obj);
 }
-
 
 /**
  * Returns the object of specified type from JSON representation
@@ -51,10 +55,9 @@ function getJSON(/* obj */) {
  *    const r = fromJSON(Circle.prototype, '{"radius":10}');
  *
  */
-function fromJSON(/* proto, json */) {
-  throw new Error('Not implemented');
+function fromJSON(proto, json) {
+  return Object.setPrototypeOf(JSON.parse(json), proto);
 }
-
 
 /**
  * Css selectors builder
@@ -110,36 +113,112 @@ function fromJSON(/* proto, json */) {
  *  For more examples see unit tests.
  */
 
+const UNIQUE_SELECTOR_ERROR = 'Element, id and pseudo-element should not occur more then one time inside the selector';
+const ORDER_ERROR = 'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element';
+class BaseSelector {
+  constructor(prepend, value, openingBracket, closingBracket, options) {
+    this.prepend = prepend;
+    this.value = value;
+    this.openingBracket = openingBracket;
+    this.closingBracket = closingBracket;
+    this.options = options;
+  }
+
+  // Unique
+  element(value) {
+    if (this.options.element) throw new Error(UNIQUE_SELECTOR_ERROR);
+    if (
+      this.options.id || this.options.class || this.options.attr
+      || this.options.pseudoClass || this.options.pseudoElement
+    ) {
+      throw new Error(ORDER_ERROR);
+    }
+    return new BaseSelector(this.stringify(), value, '', '', { element: true });
+  }
+
+  id(value) {
+    if (this.options.id) throw new Error(UNIQUE_SELECTOR_ERROR);
+    if (this.options.class || this.options.attr
+      || this.options.pseudoClass || this.options.pseudoElement) {
+      throw new Error(ORDER_ERROR);
+    }
+    return new BaseSelector(this.stringify(), value, '#', '', { id: true });
+  }
+
+  pseudoElement(value) {
+    if (this.options.pseudoElement) throw new Error(UNIQUE_SELECTOR_ERROR);
+    return new BaseSelector(this.stringify(), value, '::', '', {
+      pseudoElement: true,
+    });
+  }
+
+  // Not unique
+  class(value) {
+    if (
+      this.options.attr || this.options.pseudoClass || this.options.pseudoElement
+    ) {
+      throw new Error(ORDER_ERROR);
+    }
+    return new BaseSelector(this.stringify(), value, '.', '', { class: true });
+  }
+
+  attr(value) {
+    if (this.options.pseudoClass || this.options.pseudoElement) {
+      throw new Error(ORDER_ERROR);
+    }
+    return new BaseSelector(this.stringify(), value, '[', ']', { attr: true });
+  }
+
+  pseudoClass(value) {
+    if (this.options.pseudoElement) {
+      throw new Error(ORDER_ERROR);
+    }
+    return new BaseSelector(this.stringify(), value, ':', '', {
+      pseudoClass: true,
+    });
+  }
+
+  stringify() {
+    let res = this.value;
+    if (this.openingBracket) res = this.openingBracket + res;
+    if (this.closingBracket) res += this.closingBracket;
+    return this.prepend + res;
+  }
+}
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  element(value) {
+    return new BaseSelector('', value, '', '', { element: true });
   },
 
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    return new BaseSelector('', value, '#', '', { id: true });
   },
 
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    return new BaseSelector('', value, '.', '', { class: true });
   },
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    return new BaseSelector('', value, '[', ']', { attr: true });
   },
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    return new BaseSelector('', value, ':', '', { pseudoClass: true });
   },
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    return new BaseSelector('', value, '::', '', { pseudoElement: true });
   },
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    return new BaseSelector(
+      '',
+      ` ${combinator} `,
+      selector1.stringify(),
+      selector2.stringify(),
+    );
   },
 };
-
 
 module.exports = {
   Rectangle,
